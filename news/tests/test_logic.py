@@ -31,7 +31,7 @@ class TestCommentCreation(TestCase):
         self.assertEqual(comments_count, 0)
 
     def test_user_can_create_comment(self):
-        """Авторизованный пользователь может отправить комментарий.."""
+        """Авторизованный пользователь может отправить комментарий."""
         response = self.auth_client.post(self.url, data=self.form_data)
         self.assertRedirects(response, f'{self.url}#comments')
         comments_count = Comment.objects.count()
