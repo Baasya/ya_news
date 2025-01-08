@@ -1,21 +1,32 @@
 from http import HTTPStatus
 
 import pytest
-from django.urls import reverse
 from pytest_django.asserts import assertRedirects
+
+from .conftest import (
+    AUTHOR_CLIENT,
+    COMMENT_DELETE_URL,
+    COMMENT_EDIT_URL,
+    NEWS_DETAIL_URL,
+    NEWS_HOME_URL,
+    NOT_AUTHOR_CLIENT,
+    USERS_LOGIN_URL,
+    USERS_LOGOUT_URL,
+    USERS_SIGHNUP_URL,
+)
 
 
 @pytest.mark.parametrize(
-    'name, args',
+    'url',
     (
-        ('news:detail', pytest.lazy_fixture('comment_for_args')),
-        ('news:home', None),
-        ('users:login', None),
-        ('users:logout', None),
-        ('users:signup', None),
+        NEWS_DETAIL_URL,
+        NEWS_HOME_URL,
+        USERS_LOGIN_URL,
+        USERS_LOGOUT_URL,
+        USERS_SIGHNUP_URL,
     ),
 )
-def test_pages_availability_for_anonymous_user(client, name, args):
+def test_pages_availability_for_anonymous_user(client, url):
     """Главная страница доступна анонимному пользователю.
 
     Страницы регистрации пользователей, входа в учётную
@@ -23,7 +34,6 @@ def test_pages_availability_for_anonymous_user(client, name, args):
 
     Страница отдельной новости доступна анонимному пользователю.
     """
-    url = reverse(name, args=args)
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 
@@ -31,16 +41,16 @@ def test_pages_availability_for_anonymous_user(client, name, args):
 @pytest.mark.parametrize(
     'parametrized_client, expected_status',
     (
-        (pytest.lazy_fixture('not_author_client'), HTTPStatus.NOT_FOUND),
-        (pytest.lazy_fixture('author_client'), HTTPStatus.OK)
+        (NOT_AUTHOR_CLIENT, HTTPStatus.NOT_FOUND),
+        (AUTHOR_CLIENT, HTTPStatus.OK),
     ),
 )
 @pytest.mark.parametrize(
-    'name',
-    ('news:edit', 'news:delete'),
+    'url',
+    (COMMENT_EDIT_URL, COMMENT_DELETE_URL),
 )
 def test_pages_availability_for_different_users(
-        parametrized_client, name, comment, expected_status
+        parametrized_client, url, expected_status
 ):
     """
     Страницы удаления и редактирования комментария
@@ -49,25 +59,19 @@ def test_pages_availability_for_different_users(
     Авторизованный пользователь не может зайти на страницы редактирования
     или удаления чужих комментариев (возвращается ошибка 404).
     """
-    url = reverse(name, args=(comment.id,))
     response = parametrized_client.get(url)
     assert response.status_code == expected_status
 
 
 @pytest.mark.parametrize(
-    'name, args',
-    (
-        ('news:edit', pytest.lazy_fixture('comment_for_args')),
-        ('news:delete', pytest.lazy_fixture('comment_for_args')),
-    ),
+    'url',
+    (COMMENT_EDIT_URL, COMMENT_DELETE_URL),
 )
-def test_redirects(client, name, args):
+def test_redirects(client, url, users_login_url):
     """
     При попытке перейти на страницу редактирования или удаления комментария
     анонимный пользователь перенаправляется на страницу авторизации.
     """
-    login_url = reverse('users:login')
-    url = reverse(name, args=args)
-    expected_url = f'{login_url}?next={url}'
+    expected_url = f'{users_login_url}?next={url}'
     response = client.get(url)
     assertRedirects(response, expected_url)
